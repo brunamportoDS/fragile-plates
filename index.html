@@ -280,9 +280,9 @@
     </div>
     <div>
       <label for="tool-shock">Price shock, unit price after vs before</label>
-      <div class="shock"><input type="range" id="tool-shock" min="0" max="120" step="1" value="54"><output id="tool-shock-out" for="tool-shock">+54%</output></div>
+      <div class="shock"><input type="range" id="tool-shock" min="0" max="120" step="0.01" value="54.04"><output id="tool-shock-out" for="tool-shock">+54%</output></div>
       <div class="presets" role="group" aria-label="Presets">
-        <button type="button" data-shock="54" aria-pressed="true">Egypt 2022 · +54%</button>
+        <button type="button" data-shock="54.04" aria-pressed="true">Egypt 2022 · +54%</button>
         <button type="button" data-shock="36" aria-pressed="false">Mexico 2022 · +36%</button>
         <button type="button" data-shock="100" aria-pressed="false">Doubling · +100%</button>
       </div>
@@ -595,6 +595,7 @@
 
   // =============================== the tool ===============================
   // Inputs per case, from the analysis (FAOSTAT-derived, 2019-23 means).
+  // The Egypt preset carries the calibrated shock to two decimals (54.04%) so the default state reproduces the notebook's 185 kcal.
   const TOOL = {
     Egypt:  { imported: 526, total: 3107, top1: 0.554, pop: 111.0, mt: 8.50, usd: 3.09 },
     Mexico: { imported: 391, total: 3270, top1: 0.937, pop: 127.7, mt: 17.01, usd: 4.48 },
@@ -606,7 +607,7 @@
   function calc() {
     const c = TOOL[sel.value], p = +rng.value / 100, share = 1 - 1 / (1 + p);
     const kcal = c.imported * share, upper = c.imported * c.top1;
-    out.value = `+${rng.value}%`;
+    out.value = `+${Math.round(+rng.value)}%`;
     $('r-kcal').textContent = kcal.toFixed(0);
     $('r-pct').textContent = `${(100 * kcal / c.total).toFixed(1)}% of the diet`;
     $('r-slices').textContent = (kcal / 80).toFixed(1);
