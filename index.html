@@ -1,0 +1,664 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="description" content="When a country's biggest crop supplier disappears, whose plate breaks first? A data essay on FAOSTAT trade and food balance data.">
+<title>Fragile Plates</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500;12..96,700;12..96,800&family=Newsreader:ital,opsz,wght@0,6..72,400;0,6..72,500;1,6..72,400&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+  :root {
+    color-scheme: light;
+    --bg: #f5f6f4; --surface: #eceee9; --card: rgba(245, 246, 244, 0.93);
+    --ink: #14161a; --ink-2: #4d5560; --muted: #8a9098; --rule: #dde0db;
+    --s1: #2a78d6; --s2: #eb6834; --s3: #1baf7a; --dim: #d5d8d3; --accent: #eb6834;
+    --display: "Bricolage Grotesque", "Helvetica Neue", Arial, sans-serif;
+    --body: "Newsreader", Georgia, "Times New Roman", serif;
+    --mono: "IBM Plex Mono", "SFMono-Regular", Menlo, Consolas, monospace;
+    --measure: 38rem;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      color-scheme: dark;
+      --bg: #16181b; --surface: #1f2226; --card: rgba(22, 24, 27, 0.9);
+      --ink: #f2f3f0; --ink-2: #c0c5c9; --muted: #858b92; --rule: #2e3237;
+      --s1: #3987e5; --s2: #d95926; --s3: #199e70; --dim: #353940; --accent: #f0703f;
+    }
+  }
+  :root[data-theme="dark"] {
+    color-scheme: dark;
+    --bg: #16181b; --surface: #1f2226; --card: rgba(22, 24, 27, 0.9);
+    --ink: #f2f3f0; --ink-2: #c0c5c9; --muted: #858b92; --rule: #2e3237;
+    --s1: #3987e5; --s2: #d95926; --s3: #199e70; --dim: #353940; --accent: #f0703f;
+  }
+
+  body { background: var(--bg); color: var(--ink); font-family: var(--body); font-size: 19px; line-height: 1.55; }
+  .essay { overflow-x: clip; }
+  .prose { max-width: var(--measure); margin: 0 auto; padding: 0 1.25rem; }
+  .prose p { margin: 0 0 1.2em; }
+  .prose h2 { font-family: var(--display); font-weight: 700; font-size: 1.75rem; line-height: 1.15; letter-spacing: -0.01em; text-wrap: balance; margin: 2.6em 0 0.6em; }
+  .prose strong { font-weight: 500; color: var(--ink); }
+  a { color: inherit; text-decoration-color: var(--muted); text-underline-offset: 3px; }
+  a:focus-visible, summary:focus-visible { outline: 2px solid var(--s1); outline-offset: 3px; }
+  .num { font-family: var(--mono); font-size: 0.92em; font-variant-numeric: tabular-nums; }
+
+  .progress { position: fixed; inset: 0 auto auto 0; height: 3px; width: 0; background: var(--accent); z-index: 20; }
+
+  /* ---------- hero: the thesis, sized to its type ---------- */
+  header.hero { max-width: 60rem; margin: 0 auto; padding: 4.5rem 1.25rem 1.5rem; }
+  .kicker { font-family: var(--mono); font-size: 0.78rem; letter-spacing: 0.14em; text-transform: uppercase; color: var(--ink-2); margin-bottom: 1.4rem; }
+  h1 { font-family: var(--display); font-weight: 800; font-size: clamp(2.4rem, 7vw, 5rem); line-height: 0.98; letter-spacing: -0.025em; text-wrap: balance; margin: 0 0 1.2rem; max-width: 18ch; }
+  h1 em { font-style: normal; color: var(--accent); }
+  .dek { font-family: var(--body); font-size: 1.3rem; line-height: 1.4; color: var(--ink-2); margin: 0 0 1.4rem; max-width: 34rem; text-wrap: pretty; }
+  .byline { font-family: var(--mono); font-size: 0.8rem; color: var(--muted); display: flex; flex-wrap: wrap; gap: 0.4rem 1.2rem; }
+  .byline a { color: var(--ink-2); }
+
+  /* ---------- stat tile ---------- */
+  figure.stat { max-width: var(--measure); margin: 2.4rem auto; padding: 1.4rem 1.25rem; border-top: 1px solid var(--rule); border-bottom: 1px solid var(--rule); }
+  .stat .big { font-family: var(--display); font-weight: 800; font-size: clamp(3rem, 10vw, 5.5rem); line-height: 0.95; letter-spacing: -0.03em; color: var(--ink); }
+  .stat .big em { font-style: normal; color: var(--accent); }
+  .stat .lead { font-size: 1.15rem; color: var(--ink); margin: 0.5rem 0 0.35rem; }
+  .stat figcaption { font-family: var(--mono); font-size: 0.78rem; color: var(--muted); line-height: 1.5; }
+
+  /* ---------- scrolly ---------- */
+  .scrolly { position: relative; display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1.45fr); gap: 2rem; max-width: 74rem; margin: 3rem auto; padding: 0 1.25rem; }
+  .graphic { position: sticky; top: 0; align-self: start; height: 100vh; display: flex; flex-direction: column; justify-content: center; }
+  .graphic svg { width: 100%; height: auto; max-height: 78vh; }
+  .steps { padding: 12vh 0 30vh; }
+  .step { min-height: 50vh; display: flex; align-items: center; opacity: 0.32; transition: opacity 300ms; }
+  .step.is-active { opacity: 1; }
+  .step > div { background: var(--card); backdrop-filter: blur(4px); border-left: 3px solid var(--rule); padding: 1rem 1.25rem; max-width: 27rem; }
+  .step.is-active > div { border-left-color: var(--accent); }
+  .step p { margin: 0; font-size: 1.05rem; }
+  .step .n { display: block; font-family: var(--mono); font-size: 0.72rem; letter-spacing: 0.12em; color: var(--muted); margin-bottom: 0.45rem; }
+
+  @media (max-width: 720px) {
+    body { font-size: 17.5px; }
+    header.hero { padding-top: 3rem; }
+    .scrolly { grid-template-columns: 1fr; gap: 0; }
+    .graphic { height: 54vh; z-index: 1; background: var(--bg); justify-content: flex-start; padding-top: 0.4rem; }
+    .graphic svg { max-height: 50vh; }
+    .steps { padding: 3vh 0 28vh; }
+    .step { min-height: 52vh; align-items: flex-start; }
+    .step > div { max-width: none; }
+  }
+
+  /* ---------- charts: text wears text tokens ---------- */
+  .chart text { font-family: var(--mono); fill: var(--ink-2); font-size: 11.5px; }
+  .chart .title { font-family: var(--display); font-weight: 700; font-size: 17px; fill: var(--ink); }
+  .chart .subtitle { fill: var(--muted); font-size: 11.5px; }
+  .chart .label.strong { fill: var(--ink); font-weight: 500; }
+  .chart .value { fill: var(--ink-2); font-size: 11px; }
+  .chart .axis line { stroke: var(--rule); }
+  .chart .axis .domain { display: none; }
+  .chart .axis text { fill: var(--muted); font-size: 10.5px; }
+  .chart .legend text, .chart .end { fill: var(--ink-2); }
+  .chart .end.strong { fill: var(--ink); font-weight: 500; }
+  .chart .annot { fill: var(--ink); font-size: 12px; font-weight: 500; }
+  .chart .rule { stroke: var(--muted); stroke-dasharray: 3 3; }
+  .chart .zero { stroke: var(--ink-2); }
+  .tip { position: fixed; pointer-events: none; background: var(--card); border: 1px solid var(--rule); border-radius: 4px; padding: 0.4rem 0.6rem; font-family: var(--mono); font-size: 0.75rem; color: var(--ink); line-height: 1.5; opacity: 0; transition: opacity 120ms; z-index: 30; }
+  .tip.show { opacity: 1; }
+
+  figure.inline { max-width: 46rem; margin: 2rem auto; padding: 0 1.25rem; }
+  figure.inline figcaption { font-family: var(--mono); font-size: 0.78rem; color: var(--muted); margin-top: 0.4rem; line-height: 1.5; }
+
+  details.table { max-width: 46rem; margin: 0.4rem auto 0; padding: 0 1.25rem; font-family: var(--mono); font-size: 0.78rem; color: var(--ink-2); }
+  details.table summary { cursor: pointer; }
+  details.table table { border-collapse: collapse; margin-top: 0.5rem; width: 100%; }
+  details.table th, details.table td { text-align: left; padding: 0.25rem 0.6rem 0.25rem 0; border-bottom: 1px solid var(--rule); font-weight: 400; }
+  details.table td.n, details.table th.n { text-align: right; font-variant-numeric: tabular-nums; }
+  .graphic details.table { padding: 0; margin-top: 0.3rem; }
+
+  /* ---------- the solution: reserve sizing tool ---------- */
+  .tool { max-width: 46rem; margin: 2rem auto 0; padding: 1.4rem 1.25rem 1.6rem; background: var(--surface); border-top: 3px solid var(--accent); }
+  .tool h3 { font-family: var(--display); font-weight: 700; font-size: 1.25rem; margin: 0 0 0.25rem; letter-spacing: -0.01em; }
+  .tool .hint { font-size: 0.95rem; color: var(--ink-2); margin: 0 0 1.1rem; }
+  .tool .controls { display: grid; grid-template-columns: 1fr 2fr; gap: 1rem 1.5rem; align-items: end; margin-bottom: 1.2rem; }
+  .tool label { display: block; font-family: var(--mono); font-size: 0.74rem; letter-spacing: 0.08em; text-transform: uppercase; color: var(--ink-2); margin-bottom: 0.4rem; }
+  .tool select { width: 100%; font: 500 1rem var(--display); color: var(--ink); background: var(--bg); border: 1px solid var(--rule); border-radius: 4px; padding: 0.5rem 0.6rem; }
+  .tool select:focus-visible, .tool input:focus-visible, .tool button:focus-visible { outline: 2px solid var(--s1); outline-offset: 2px; }
+  .tool .shock { display: grid; grid-template-columns: 1fr auto; gap: 0.75rem; align-items: center; }
+  .tool input[type=range] { width: 100%; accent-color: var(--accent); }
+  .tool output { font-family: var(--mono); font-size: 1.1rem; min-width: 4.5ch; text-align: right; color: var(--ink); }
+  .tool .presets { display: flex; flex-wrap: wrap; gap: 0.4rem; margin-top: 0.5rem; }
+  .tool button { font: 400 0.74rem var(--mono); color: var(--ink-2); background: var(--bg); border: 1px solid var(--rule); border-radius: 999px; padding: 0.25rem 0.7rem; cursor: pointer; }
+  .tool button[aria-pressed="true"] { color: var(--ink); border-color: var(--accent); }
+  .tool .results { display: grid; grid-template-columns: repeat(3, 1fr); gap: 0.75rem; }
+  .tool .r { padding: 0.75rem 0.85rem; background: var(--bg); border: 1px solid var(--rule); }
+  .tool .r .v { font-family: var(--display); font-weight: 800; font-size: 1.9rem; line-height: 1; letter-spacing: -0.02em; color: var(--ink); font-variant-numeric: tabular-nums; }
+  .tool .r .v em { font-style: normal; color: var(--accent); }
+  .tool .r .k { font-family: var(--mono); font-size: 0.7rem; color: var(--muted); margin-top: 0.35rem; line-height: 1.4; }
+  .tool .bounds { font-family: var(--mono); font-size: 0.74rem; color: var(--muted); margin: 0.9rem 0 0; line-height: 1.5; }
+  @media (max-width: 720px) {
+    .tool .controls { grid-template-columns: 1fr; }
+    .tool .results { grid-template-columns: repeat(2, 1fr); }
+  }
+
+  /* ---------- so-what ---------- */
+  .actions { max-width: var(--measure); margin: 1.5rem auto 0; padding: 0 1.25rem; display: grid; gap: 1rem; }
+  .action { display: grid; grid-template-columns: 6.5rem 1fr; gap: 1rem; align-items: baseline; padding: 0.9rem 0; border-top: 1px solid var(--rule); }
+  .action .who { font-family: var(--display); font-weight: 700; font-size: 1.05rem; }
+  .action .who .num { font-weight: 400; font-size: 0.72rem; color: var(--muted); letter-spacing: 0.06em; text-transform: uppercase; }
+  .action p { margin: 0; font-size: 1rem; color: var(--ink-2); }
+  .action p b { font-weight: 500; color: var(--ink); }
+
+  /* ---------- methods ---------- */
+  #methods { max-width: var(--measure); margin: 4rem auto 6rem; padding: 2rem 1.25rem 0; border-top: 2px solid var(--ink); font-size: 0.95rem; color: var(--ink-2); }
+  #methods h2 { font-family: var(--display); font-weight: 700; font-size: 1.3rem; color: var(--ink); margin: 0 0 1rem; }
+  #methods ol { padding-left: 1.2rem; }
+  #methods li { margin-bottom: 0.5em; }
+  #methods li b { font-weight: 500; color: var(--ink); }
+
+  @media (prefers-reduced-motion: reduce) {
+    .step, .tip { transition: none; }
+  }
+</style>
+
+</head>
+<body>
+<div class="progress" id="progress" aria-hidden="true"></div>
+<div class="tip" id="tip" role="status" aria-live="polite"></div>
+
+<div class="essay">
+
+<header class="hero">
+  <div class="kicker">Fragile Plates · What's Cooking, 2026</div>
+  <h1>A food shock doesn't empty the shelves. <em>It empties the wallet.</em></h1>
+  <p class="dek">We screened 13 staples across 180 countries to find whose plate breaks first when one supplier stops.</p>
+  <div class="byline"><span>Team Fragile Plates</span><span>September 2026</span><a href="#methods">Methods &amp; sources</a></div>
+</header>
+
+<div class="prose">
+  <p>Every plate of food is the last stop on a supply chain, and some chains have exactly one link. Lesotho, a mountain kingdom of 2.3 million people, buys <span class="num">100%</span> of its imported maize from South Africa. Maize is nearly half of what a person in Lesotho eats in a day.</p>
+  <p>So we asked a simple question of the trade records the UN's Food and Agriculture Organization keeps for every country on earth: <strong>if the biggest supplier stopped tomorrow, whose plate breaks first?</strong></p>
+</div>
+
+<figure class="stat">
+  <div class="big"><em>34%</em></div>
+  <p class="lead">of a person's daily calories in Lesotho arrive from one foreign country, through one crop.</p>
+  <figcaption>Plate share = the top supplier's share of imports × the crop's share of the diet × the share of supply that is imported. FAOSTAT, 2019–23 means.</figcaption>
+</figure>
+
+<div class="prose">
+  <p>We call that number <strong>plate share</strong>. It is easy to compute and easy to rank. Ranking it is where the argument started.</p>
+</div>
+
+<!-- ============================ SCROLLY A: whose plate ============================ -->
+<section class="scrolly" data-scrolly="a" aria-label="Whose plate breaks first, step by step">
+  <div class="graphic">
+    <svg class="chart" id="chart-a" role="img" aria-labelledby="chart-a-title"></svg>
+    <details class="table"><summary>View as table</summary>
+      <table><thead><tr><th>Country</th><th>Crop · via</th><th class="n">Plate share</th><th class="n">Pop (M)</th><th class="n">Full plates (M)</th></tr></thead>
+      <tbody id="table-a"></tbody></table></details>
+  </div>
+  <div class="steps">
+    <div class="step" data-step="0"><div><span class="n">1 / 4</span>
+      <p>The fifteen countries with the highest plate share. Each bar is the share of one person's daily calories that comes from <strong>one</strong> foreign supplier through <strong>one</strong> crop. Lesotho leads. Nothing is highlighted yet.</p></div></div>
+    <div class="step" data-step="1"><div><span class="n">2 / 4</span>
+      <p>Watch which bars stay blue. Every one is a country of fewer than <span class="num">12 million</span> people. Wheat dominates, and the suppliers are Russia, Kazakhstan, Ukraine, Serbia. Lebanon's <span class="num">21%</span> via Ukraine was visible here before February 2022.</p></div></div>
+    <div class="step" data-step="2"><div><span class="n">3 / 4</span>
+      <p>Now change the question from <em>how deep</em> to <em>how many</em>: multiply plate share by population. The bars re-sort. Pakistan, Mexico and Egypt rise; Lesotho falls to the bottom. Same data, opposite answer.</p></div></div>
+    <div class="step" data-step="3"><div><span class="n">4 / 4</span>
+      <p>The orange bars are the three we followed. <span class="num">14 million</span> people's worth of full plates in Mexico hang on one supplier, the United States. That is the scale a national budget answers to.</p></div></div>
+  </div>
+</section>
+
+<div class="prose">
+  <h2>We built a model. It said nobody would go hungry.</h2>
+  <p>The obvious next step was to simulate the shock: take the top supplier away, let the others fill the gap up to the most they had ever shipped, and count the tonnes that could not be replaced. Convert tonnes to calories. Divide by people.</p>
+  <p>The answer, for every country, was <span class="num">zero</span>. Brazil had spare maize for Mexico. Australia had spare wheat for Egypt. On paper, the ships always come.</p>
+  <p>Before trusting that, we did the one thing a model can't argue with: we checked it against something that had already happened.</p>
+</div>
+
+<!-- ============================ SCROLLY B: Egypt ============================ -->
+<section class="scrolly" data-scrolly="b" aria-label="Egypt's wheat imports before and after 2022">
+  <div class="graphic">
+    <svg class="chart" id="chart-b" role="img" aria-labelledby="chart-b-title"></svg>
+    <details class="table"><summary>View as table</summary>
+      <table><thead><tr><th>Year</th><th class="n">Volume (2019 = 100)</th><th class="n">Price per tonne (2019 = 100)</th></tr></thead>
+      <tbody id="table-b"></tbody></table></details>
+  </div>
+  <div class="steps">
+    <div class="step" data-step="0"><div><span class="n">1 / 3</span>
+      <p>Egypt imports more wheat than any country on earth. Here is how much arrived each year, indexed so 2019 is <span class="num">100</span>. The grey line marks February 2022, when Russia invaded Ukraine. Together they supplied three-quarters of it.</p></div></div>
+    <div class="step" data-step="1"><div><span class="n">2 / 3</span>
+      <p>Now the price of each tonne, on the same scale. It climbs through 2022 and stays high for two years. The ships kept coming. What arrived on the bill did not.</p></div></div>
+    <div class="step" data-step="2"><div><span class="n">3 / 3</span>
+      <p>Average the three years after against the five before. Volume: <span class="num">−3%</span>. Price: <span class="num">+54%</span>.</p></div></div>
+  </div>
+</section>
+
+<div class="prose">
+  <h2>A fragile plate breaks three ways</h2>
+  <p>Egypt paid. It bought <span class="num">3%</span> less wheat and paid <span class="num">54%</span> more for it. But when we ran the same before-and-after for our other cases, they didn't follow Egypt's script.</p>
+  <p><strong>Mexico paid more and bought more.</strong> Its maize imports rose <span class="num">18%</span> through a <span class="num">36%</span> price rise, and its supplier count fell from 24 to 8. The shock made it lean in harder.</p>
+  <p><strong>Ghana couldn't pay.</strong> Its rice price barely moved in dollars, but the cedi lost half its value in 2022 and the country defaulted that December. Ghana bought <span class="num">29%</span> less rice. Not because rice got dearer; because Ghana got poorer.</p>
+</div>
+
+<figure class="inline">
+  <svg class="chart" id="chart-c" role="img" aria-labelledby="chart-c-title"></svg>
+  <figcaption>Change in import volume and unit price, three-year average after each country's shock vs the five years before. Egypt and Mexico: 2022. Ghana: 2023 (India's rice export ban).</figcaption>
+</figure>
+<details class="table"><summary>View as table</summary>
+  <table><thead><tr><th>Country · crop</th><th class="n">Volume</th><th class="n">Unit price</th><th>Mechanism</th></tr></thead>
+  <tbody><tr><td>Egypt · wheat</td><td class="n">−3.1%</td><td class="n">+54.0%</td><td>paid more</td></tr>
+  <tr><td>Mexico · maize</td><td class="n">+18.5%</td><td class="n">+35.8%</td><td>paid more, bought more</td></tr>
+  <tr><td>Ghana · rice</td><td class="n">−29.4%</td><td class="n">−3.8%</td><td>couldn't pay, bought less</td></tr></tbody></table></details>
+
+<div class="prose">
+  <p>Same fragility, three different endings. What decides the ending is not the crop, the supplier, or the distance. It is whether the country can afford the bill. That is the thing our plate-share number never measured.</p>
+
+  <h2>So what</h2>
+  <p>We rebuilt the model around price. If the market reprices the way it did for Egypt in 2022, and a country's food budget does not grow to match, this is what goes missing from each person's plate every day:</p>
+</div>
+
+<figure class="stat">
+  <div class="big"><em>185</em> kcal</div>
+  <p class="lead">per person per day in Egypt, about two slices of bread, for 111 million people. Mexico: 137. Ghana: 78.</p>
+  <figcaption>Model C: imported calories × (1 − 1 ÷ 1.54). Bounded between 0 (fully replaced at the same price) and 291 (nothing replaced). Not famine; the margin between a quiet year and a bread protest.</figcaption>
+</figure>
+
+<div class="prose">
+  <h2>The solution: grain or money, and a rule for each country</h2>
+  <p>A planner has two instruments. Hold grain, which costs money every single year in silos, interest and spoilage. Or hold a budget line, which costs nothing until the shock arrives and then pays the higher bill. Our first draft sized a reserve with one formula and got the same answer for all three countries, 4.2 months. That is the model read back, not a decision.</p>
+  <p>So we costed the two instruments against each other. The ratio between a shock-year bill and a year of carrying grain is the <strong>break-even interval</strong>: a reserve only pays for itself if shocks come more often than that. Give the tool a country and a price shock and it returns both numbers, and the interval.</p>
+</div>
+
+<section class="tool" aria-labelledby="tool-h">
+  <h3 id="tool-h">Size the reserve</h3>
+  <p class="hint">Choose a case and a price shock. Egypt's observed 2022 shock is the default.</p>
+  <div class="controls">
+    <div>
+      <label for="tool-country">Country · staple</label>
+      <select id="tool-country">
+        <option value="Egypt">Egypt · wheat</option>
+        <option value="Mexico">Mexico · maize</option>
+        <option value="Ghana">Ghana · rice</option>
+      </select>
+    </div>
+    <div>
+      <label for="tool-shock">Price shock, unit price after vs before</label>
+      <div class="shock"><input type="range" id="tool-shock" min="0" max="120" step="1" value="54"><output id="tool-shock-out" for="tool-shock">+54%</output></div>
+      <div class="presets" role="group" aria-label="Presets">
+        <button type="button" data-shock="54" aria-pressed="true">Egypt 2022 · +54%</button>
+        <button type="button" data-shock="36" aria-pressed="false">Mexico 2022 · +36%</button>
+        <button type="button" data-shock="100" aria-pressed="false">Doubling · +100%</button>
+      </div>
+    </div>
+  </div>
+  <div class="results" aria-live="polite">
+    <div class="r"><div class="v" id="r-kcal">185</div><div class="k">kcal per person per day at risk<br><span id="r-pct">5.9% of the diet</span></div></div>
+    <div class="r"><div class="v" id="r-slices">2.3</div><div class="k">slices of bread a day<br>for <span id="r-pop">111M</span> people</div></div>
+    <div class="r"><div class="v"><em id="r-months">4.2</em></div><div class="k">months of imports in reserve<br><span id="r-mt">3.0 Mt</span></div></div>
+    <div class="r"><div class="v">$<span id="r-usd">1.7</span>bn</div><div class="k">in a shock year, to pay the bill<br>zero in a quiet year</div></div>
+    <div class="r"><div class="v">$<span id="r-carry">0.14</span>bn</div><div class="k">every year, to carry that reserve<br>storage + capital + shrinkage</div></div>
+    <div class="r"><div class="v"><em id="r-even">12</em> yrs</div><div class="k">break-even: the reserve wins only<br>if shocks come more often than this</div></div>
+  </div>
+  <p class="bounds" id="r-bounds">Bounded: 0 kcal if fully replaced at the same price · 291 kcal if nothing is replaced. Model C: imported calories × (1 − 1 ÷ (1 + shock)).</p>
+  <p class="bounds">Carry assumes USD 20 per tonne a year for storage, 5% capital cost and 2% shrinkage on grain valued at the 2019–23 import price. These are typical bulk-grain figures, not FAOSTAT data; halving or doubling storage moves the break-even by a few years, not the conclusion.</p>
+</section>
+
+<div class="prose">
+  <p style="margin-top:2rem">Which instrument depends on how the plate broke. A country that paid more needs money. A country that leaned in on a corridor with no alternative needs its own stock. A country that could not pay needs hard currency, not grain. One rule per country, each with a trigger, a size, a yearly cost and an owner.</p>
+</div>
+
+<div class="actions">
+  <div class="action"><div class="who">Egypt<br><span class="num">paid more</span></div><p><b>Trigger:</b> imported wheat above about USD 350 a tonne, the 2017–21 average plus half the 2022 shock, for two quarters running. <b>Action:</b> release a <b>USD 1.7 billion</b> budget line, not the silos. We checked this against the event. Egypt paid USD 1.59 billion, 1.52 billion and 0.82 billion above 2017–21 prices in 2022, 2023 and 2024, so the line covers both peak years with about 5% to spare and over-covers the average year by a quarter, which is the right shape for a contingency. Prices stayed above the trigger for two years, and a 4.2-month reserve would have bridged one of them. Carrying that reserve costs USD 0.14 billion a year and only pays off if a shock like 2022 recurs more than once every 12 years. Sign forward contracts now with the suppliers that stepped up: France, Bulgaria, Romania. <b>Owner:</b> GASC with the Ministry of Supply.</p></div>
+  <div class="action"><div class="who">Mexico<br><span class="num">leaned in</span></div><p><b>Trigger:</b> the US share above 90% for two years (it is 94% now), or the maize import price above about USD 270 a tonne, a quarter over its 2017–21 average. <b>Action:</b> a <b>domestic strategic stock of 6 million tonnes</b>, 4.2 months of imports. Here money cannot buy supply: no other supplier has ever shown more than 0.6 points of extra capacity, and the rail and ports from Brazil and Argentina do not exist yet. <b>Cost:</b> about USD 1.6 billion to fill once, USD 0.23 billion a year to carry, against a USD 2.4 billion bill in a shock year. The carry is the insurance premium for a single-corridor supply. <b>Owner:</b> SEGALMEX with SADER.</p></div>
+  <div class="action"><div class="who">Ghana<br><span class="num">went without</span></div><p><b>Trigger:</b> quarterly rice imports below 85% of the trailing three-year average, or the cedi down more than 20% in a year. Both happened in 2022–23. <b>Action:</b> a <b>hard-currency import line of USD 0.11 billion</b> a year, the 29% of tonnes Ghana stopped buying valued at base prices, released on the trigger. Not a grain reserve: the price never moved, the constraint was dollars. Rebuild Thailand, 16% of the market before 2023 and 3% after, as the deliberate second supplier. <b>Owner:</b> Bank of Ghana with the Ministry of Food and Agriculture.</p></div>
+</div>
+
+<div class="prose">
+  <p style="margin-top:2rem">Across all three, a year of carrying grain costs about a tenth of a shock-year bill, so a budget line is the cheaper first instrument unless shocks arrive more than once a decade. Grain reserves earn their keep where money cannot buy supply.</p>
+  <p>We went looking for the country that runs out of food. We found that almost nobody does. The ships come. Then the bill comes. And whether a plate breaks depends on who is holding it.</p>
+</div>
+
+<!-- ============================ METHODS ============================ -->
+<section id="methods">
+  <h2>Methods &amp; sources</h2>
+  <ol>
+    <li><b>Data.</b> FAOSTAT Detailed Trade Matrix (importer-reported tonnes and value, 2015–2024, 52 million rows) and Food Balances 2010– (calories, population, imports and domestic supply; 2019–2023 means). Bulk downloads, <em>All Data Normalized</em>, retrieved September 2026 and verified against the FAOSTAT website.</li>
+    <li><b>Plate share</b> = top supplier's share of imports × the commodity's share of dietary energy × imports ÷ domestic supply. Items are grouped by CPC division so a primary crop is never summed with its processed forms; rice alone has seven.</li>
+    <li><b>Excluded:</b> re-export hubs (imports above 105% of domestic supply), net exporters, importers under 10,000 t a year, and the 12 countries absent from Food Balances, including Benin, Mali and Togo. Population-weighted rankings also require a 2% plate-share floor.</li>
+    <li><b>The shock.</b> Three bounded models: nothing replaced, fully replaced, replaced but repriced. The repricing (+54%) is Egypt's observed 2017–21 vs 2022–24 change, applied as a scenario to the other cases. Each case's own observed change is reported beside it.</li>
+    <li><b>The caveat that matters.</b> We measure exposure, not ability to cope. Qatar imports nearly all its rice and can outbid anyone; Ghana cannot. Read every ranking here with income in mind; the Ghana result is what that gap looks like in the data.</li>
+    <li><b>Reserve vs budget line.</b> A reserve is sized to the tonnes a fixed budget can no longer buy, annual imports × (1 − 1 ÷ (1 + shock)). Its yearly carry is storage (USD 20/t), capital (5%) and shrinkage (2%) on grain at the 2019–23 import price; these are typical bulk-grain assumptions, not FAOSTAT data. The budget line is shock × the annual import bill. Break-even = budget line ÷ carry. Egypt's budget number is checked against the extra Egypt actually paid above 2017–21 prices in each of 2022–24: USD 1.59, 1.52 and 0.82 billion. Institutional names (GASC, SEGALMEX) should be verified against current bodies.</li>
+    <li><b>What we didn't do.</b> Lose the top two suppliers at once, which is how 2022 actually unfolded. Our first, physical-replacement model is described honestly above because the correction is part of the finding.</li>
+  </ol>
+  <p>Sources: <a href="https://www.fao.org/faostat/en/#data/TM">FAOSTAT Detailed Trade Matrix</a> · <a href="https://www.fao.org/faostat/en/#data/FBS">FAOSTAT Food Balances (2010–)</a>. Analysis notebook and code available from the team.</p>
+</section>
+
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/d3/7.9.0/d3.min.js"></script>
+<script>
+(function () {
+  const css = v => getComputedStyle(document.documentElement).getPropertyValue(v).trim();
+  const reduced = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+  const DUR = reduced ? 0 : 700;
+  const tip = document.getElementById('tip');
+  const showTip = (html, ev) => { tip.innerHTML = html; tip.style.left = (ev.clientX + 14) + 'px'; tip.style.top = (ev.clientY + 14) + 'px'; tip.classList.add('show'); };
+  const hideTip = () => tip.classList.remove('show');
+
+  // =============================== A: whose plate ===============================
+  const A = [
+    { c: 'Lesotho',     share: 33.6, pop: 2.3,   crop: 'maize',    via: 'South Africa' },
+    { c: 'Bhutan',      share: 30.1, pop: 0.8,   crop: 'rice',     via: 'India' },
+    { c: 'Montenegro',  share: 29.5, pop: 0.6,   crop: 'wheat',    via: 'Serbia' },
+    { c: 'Comoros',     share: 27.9, pop: 0.8,   crop: 'rice',     via: 'Pakistan' },
+    { c: 'Georgia',     share: 25.2, pop: 3.8,   crop: 'wheat',    via: 'Russia' },
+    { c: 'Tajikistan',  share: 22.7, pop: 10.0,  crop: 'wheat',    via: 'Kazakhstan' },
+    { c: 'Jordan',      share: 21.7, pop: 11.1,  crop: 'wheat',    via: 'Romania' },
+    { c: 'Eswatini',    share: 21.5, pop: 1.2,   crop: 'maize',    via: 'South Africa' },
+    { c: 'Lebanon',     share: 21.5, pop: 5.7,   crop: 'wheat',    via: 'Ukraine' },
+    { c: 'Armenia',     share: 21.1, pop: 2.9,   crop: 'wheat',    via: 'Russia' },
+    { c: 'Mexico',      share: 11.2, pop: 127.7, crop: 'maize',    via: 'United States' },
+    { c: 'Egypt',       share: 9.4,  pop: 111.0, crop: 'wheat',    via: 'Russia' },
+    { c: 'Pakistan',    share: 8.4,  pop: 239.0, crop: 'palm oil', via: 'Indonesia' },
+    { c: 'Philippines', share: 6.4,  pop: 113.0, crop: 'rice',     via: 'Viet Nam' },
+    { c: 'Ghana',       share: 5.0,  pop: 32.5,  crop: 'rice',     via: 'Viet Nam' },
+  ].map(d => ({ ...d, full: d.share * d.pop / 100 }));
+  const CASES = new Set(['Mexico', 'Egypt', 'Ghana']);
+
+  document.getElementById('table-a').innerHTML = A.map(d =>
+    `<tr><td>${d.c}</td><td>${d.crop} · ${d.via}</td><td class="n">${d.share.toFixed(1)}%</td><td class="n">${d.pop.toFixed(1)}</td><td class="n">${d.full.toFixed(1)}</td></tr>`).join('');
+
+  const STATES_A = [
+    { metric: 'share', title: 'Whose plate breaks first', sub: '% of daily calories from one foreign supplier, via one crop · 2019–23',
+      colour: () => css('--s1'), strong: () => false, legend: null },
+    { metric: 'share', title: 'The most fragile plates are small countries', sub: 'Blue: population under 12 million',
+      colour: d => d.pop < 12 ? css('--s1') : css('--dim'), strong: d => d.pop < 12, legend: null },
+    { metric: 'full',  title: 'Weighted by population, the order flips', sub: 'Plate share × population = millions of people whose whole plate hangs on one supplier',
+      colour: () => css('--s1'), strong: () => false, legend: null },
+    { metric: 'full',  title: 'Three cases, chosen for size and a shock we could test', sub: 'Millions of full plates',
+      colour: d => CASES.has(d.c) ? css('--s2') : css('--dim'), strong: d => CASES.has(d.c),
+      legend: [['Our three cases', '--s2'], ['Other countries', '--dim']] },
+  ];
+
+  const svgA = d3.select('#chart-a');
+  const MA = { top: 62, right: 92, bottom: 30, left: 104 };
+  let WA = 640, HA = 520;
+  const gA = svgA.append('g').attr('transform', `translate(${MA.left},${MA.top})`);
+  const tA = svgA.append('text').attr('class', 'title').attr('id', 'chart-a-title').attr('x', 8).attr('y', 24);
+  const sA = svgA.append('text').attr('class', 'subtitle').attr('x', 8).attr('y', 43);
+  const axA = gA.append('g').attr('class', 'axis');
+  const lgA = svgA.append('g').attr('class', 'legend');
+
+  function sizeA() {
+    const box = document.querySelector('[data-scrolly="a"] .graphic').getBoundingClientRect();
+    WA = Math.max(320, Math.min(720, box.width));
+    HA = Math.max(380, Math.min(560, window.innerHeight * (window.innerWidth <= 720 ? 0.48 : 0.76)));
+    svgA.attr('viewBox', `0 0 ${WA} ${HA}`);
+  }
+
+  function renderA(i) {
+    const s = STATES_A[i], key = s.metric;
+    const data = [...A].sort((a, b) => b[key] - a[key]);
+    const iw = WA - MA.left - MA.right, ih = HA - MA.top - MA.bottom;
+    const x = d3.scaleLinear().domain([0, d3.max(data, d => d[key])]).nice().range([0, iw]);
+    const y = d3.scaleBand().domain(data.map(d => d.c)).range([0, ih]).padding(0.3);
+    const fmt = key === 'share' ? v => `${v.toFixed(0)}%` : v => `${v.toFixed(1)}M`;
+    const t = svgA.transition().duration(DUR);
+    tA.text(s.title); sA.text(s.sub); svgA.attr('aria-label', `${s.title}. ${s.sub}`);
+    axA.transition(t).call(d3.axisBottom(x).ticks(4).tickSize(-ih).tickFormat(fmt)).attr('transform', `translate(0,${ih})`);
+
+    const row = gA.selectAll('g.row').data(data, d => d.c)
+      .join(enter => {
+        const r = enter.append('g').attr('class', 'row').attr('transform', d => `translate(0,${y(d.c)})`);
+        r.append('rect').attr('rx', 3).attr('height', y.bandwidth()).attr('width', 0)
+          .on('mousemove', (ev, d) => showTip(`<b>${d.c}</b> · ${d.crop} via ${d.via}<br>plate share ${d.share.toFixed(1)}% · pop ${d.pop.toFixed(1)}M<br>full plates ${d.full.toFixed(1)}M`, ev))
+          .on('mouseleave', hideTip);
+        r.append('text').attr('class', 'label').attr('x', -10).attr('dy', '0.32em').attr('text-anchor', 'end').text(d => d.c);
+        r.append('text').attr('class', 'value').attr('dy', '0.32em');
+        return r;
+      });
+    row.transition(t).attr('transform', d => `translate(0,${y(d.c)})`);
+    row.select('rect').transition(t).attr('height', y.bandwidth()).attr('width', d => x(d[key])).attr('fill', d => s.colour(d));
+    row.select('text.label').classed('strong', d => s.strong(d)).attr('y', y.bandwidth() / 2);
+    row.select('text.value').transition(t).attr('x', d => x(d[key]) + 6).attr('y', y.bandwidth() / 2)
+      .tween('text', function (d) {
+        const from = +this.getAttribute('data-v') || 0, to = d[key], it = d3.interpolateNumber(from, to);
+        return tt => { this.textContent = fmt(it(tt)); this.setAttribute('data-v', to); };
+      });
+
+    lgA.selectAll('*').remove();
+    if (s.legend) {
+      const lg = lgA.attr('transform', `translate(${MA.left},${HA - 6})`);
+      let xo = 0;
+      s.legend.forEach(([name, tok]) => {
+        const it = lg.append('g').attr('transform', `translate(${xo},0)`);
+        it.append('rect').attr('width', 12).attr('height', 12).attr('y', -10).attr('rx', 2).attr('fill', css(tok));
+        it.append('text').attr('x', 16).text(name);
+        xo += 16 + name.length * 6.8 + 18;
+      });
+    }
+  }
+
+  // =============================== B: Egypt, two lines ===============================
+  const YEARS = [2017, 2018, 2019, 2020, 2021, 2022, 2023, 2024];
+  const B = {
+    volume: [124, 117, 100, 86, 56, 77, 78, 126],
+    price:  [70, 75, 100, 104, 128, 163, 160, 118],
+  };
+  const mean = a => a.reduce((s, v) => s + v, 0) / a.length;
+  const pre = k => mean(B[k].slice(0, 5)), post = k => mean(B[k].slice(5));
+  document.getElementById('table-b').innerHTML = YEARS.map((y, i) =>
+    `<tr><td>${y}</td><td class="n">${B.volume[i]}</td><td class="n">${B.price[i]}</td></tr>`).join('');
+
+  const STATES_B = [
+    { show: ['volume'], means: false, title: "Egypt's wheat imports, 2017–2024", sub: 'Tonnes arriving each year, indexed to 2019 = 100' },
+    { show: ['volume', 'price'], means: false, title: '…and what each tonne cost', sub: 'Volume and unit price, both indexed to 2019 = 100' },
+    { show: ['volume', 'price'], means: true, title: 'Before and after February 2022', sub: 'Dashed: five-year average before · three-year average after' },
+  ];
+  const SERIES = { volume: { name: 'Volume', tok: '--s1' }, price: { name: 'Unit price', tok: '--s2' } };
+
+  const svgB = d3.select('#chart-b');
+  const MB = { top: 62, right: 96, bottom: 36, left: 44 };
+  let WB = 640, HB = 440;
+  const gB = svgB.append('g').attr('transform', `translate(${MB.left},${MB.top})`);
+  const tB = svgB.append('text').attr('class', 'title').attr('id', 'chart-b-title').attr('x', 8).attr('y', 24);
+  const sB = svgB.append('text').attr('class', 'subtitle').attr('x', 8).attr('y', 43);
+  const axBx = gB.append('g').attr('class', 'axis'), axBy = gB.append('g').attr('class', 'axis');
+  const layer = gB.append('g'), meansG = gB.append('g'), endsG = gB.append('g'), hover = gB.append('g');
+  const lgB = svgB.append('g').attr('class', 'legend');
+
+  function sizeB() {
+    const box = document.querySelector('[data-scrolly="b"] .graphic').getBoundingClientRect();
+    WB = Math.max(320, Math.min(720, box.width));
+    HB = Math.max(340, Math.min(480, window.innerHeight * (window.innerWidth <= 720 ? 0.46 : 0.66)));
+    svgB.attr('viewBox', `0 0 ${WB} ${HB}`);
+  }
+
+  function renderB(i) {
+    const s = STATES_B[i];
+    const iw = WB - MB.left - MB.right, ih = HB - MB.top - MB.bottom;
+    const x = d3.scaleLinear().domain([2017, 2024]).range([0, iw]);
+    const y = d3.scaleLinear().domain([40, 180]).range([ih, 0]);
+    const t = svgB.transition().duration(DUR);
+    tB.text(s.title); sB.text(s.sub); svgB.attr('aria-label', `${s.title}. ${s.sub}`);
+    axBx.attr('transform', `translate(0,${ih})`).call(d3.axisBottom(x).ticks(8).tickFormat(d3.format('d')).tickSize(0)).selectAll('text').attr('dy', '1.1em');
+    axBy.call(d3.axisLeft(y).ticks(5).tickSize(-iw));
+
+    // 2022 rule + baseline
+    layer.selectAll('line.rule').data([2022]).join('line').attr('class', 'rule')
+      .attr('x1', x(2022)).attr('x2', x(2022)).attr('y1', 0).attr('y2', ih);
+    layer.selectAll('text.ruleLabel').data([2022]).join('text').attr('class', 'subtitle ruleLabel')
+      .attr('x', x(2022) + 5).attr('y', 12).text('Feb 2022');
+
+    const line = k => d3.line().x((v, j) => x(YEARS[j])).y(v => y(v))(B[k]);
+    const keys = ['volume', 'price'];
+    layer.selectAll('path.series').data(keys, d => d).join('path').attr('class', 'series')
+      .attr('fill', 'none').attr('stroke-width', 2.25).attr('stroke-linejoin', 'round')
+      .attr('d', k => line(k)).attr('stroke', k => css(SERIES[k].tok))
+      .transition(t).attr('opacity', k => s.show.includes(k) ? 1 : 0);
+
+    layer.selectAll('circle.pt').data(keys.flatMap(k => YEARS.map((yr, j) => ({ k, yr, v: B[k][j] }))), d => d.k + d.yr)
+      .join('circle').attr('class', 'pt').attr('r', 3.5).attr('cx', d => x(d.yr)).attr('cy', d => y(d.v))
+      .attr('fill', d => css(SERIES[d.k].tok)).attr('stroke', css('--bg')).attr('stroke-width', 2)
+      .transition(t).attr('opacity', d => s.show.includes(d.k) ? 1 : 0);
+
+    // direct labels at line ends
+    const ends = keys.filter(k => s.show.includes(k)).map(k => ({ k, v: B[k][7] })).sort((a, b) => a.v - b.v);
+    let last = -Infinity;
+    ends.forEach(e => { let py = y(e.v); if (py - last < 14) py = last + 14; e.py = py; last = py; });
+    endsG.selectAll('text.end').data(ends, d => d.k).join('text').attr('class', 'end strong')
+      .attr('x', x(2024) + 8).attr('dy', '0.32em').text(d => SERIES[d.k].name)
+      .transition(t).attr('y', d => d.py).attr('opacity', 1);
+
+    // means
+    const M = s.means ? keys.map(k => ({ k, pre: pre(k), post: post(k) })) : [];
+    const segs = M.flatMap(m => [{ id: m.k + 'pre', k: m.k, x1: 2017, x2: 2021, v: m.pre },
+                                 { id: m.k + 'post', k: m.k, x1: 2022, x2: 2024, v: m.post }]);
+    meansG.selectAll('line.mean').data(segs, d => d.id).join(
+      enter => enter.append('line').attr('class', 'mean').attr('opacity', 0)
+        .attr('x1', d => x(d.x1)).attr('x2', d => x(d.x2)).attr('y1', d => y(d.v)).attr('y2', d => y(d.v))
+        .attr('stroke', d => css(SERIES[d.k].tok)).attr('stroke-width', 2).attr('stroke-dasharray', '5 4')
+        .call(e => e.transition(t).attr('opacity', 0.9)),
+      update => update,
+      exit => exit.transition(t).attr('opacity', 0).remove());
+    const notes = M.map(m => ({ k: m.k, v: m.post, txt: (m.post / m.pre - 1 >= 0 ? '+' : '−') + Math.abs(Math.round((m.post / m.pre - 1) * 100)) + '%' }));
+    meansG.selectAll('text.annot').data(notes, d => d.k).join(
+      enter => enter.append('text').attr('class', 'annot').attr('opacity', 0)
+        .attr('x', x(2023)).attr('text-anchor', 'middle').attr('y', d => y(d.v) + (d.k === 'price' ? -10 : 18)).text(d => d.txt)
+        .call(e => e.transition(t).attr('opacity', 1)),
+      update => update,
+      exit => exit.transition(t).attr('opacity', 0).remove());
+
+    // legend when two series are visible
+    lgB.selectAll('*').remove();
+    if (s.show.length > 1) {
+      const lg = lgB.attr('transform', `translate(${MB.left},${HB - 6})`);
+      let xo = 0;
+      keys.forEach(k => {
+        const it = lg.append('g').attr('transform', `translate(${xo},0)`);
+        it.append('rect').attr('width', 14).attr('height', 3).attr('y', -6).attr('fill', css(SERIES[k].tok));
+        it.append('text').attr('x', 18).text(SERIES[k].name);
+        xo += 18 + SERIES[k].name.length * 6.8 + 20;
+      });
+    }
+
+    // hover: nearest year
+    hover.selectAll('rect').data([0]).join('rect').attr('width', iw).attr('height', ih).attr('fill', 'transparent')
+      .on('mousemove', ev => {
+        const [mx] = d3.pointer(ev);
+        const yr = Math.round(x.invert(mx)), j = YEARS.indexOf(yr);
+        if (j < 0) return hideTip();
+        const rows = s.show.map(k => `${SERIES[k].name}: ${B[k][j]}`).join('<br>');
+        showTip(`<b>${yr}</b><br>${rows}`, ev);
+      }).on('mouseleave', hideTip);
+  }
+
+  // =============================== C: three ways (static) ===============================
+  const C = [
+    { c: 'Egypt · wheat',  volume: -3.1,  price: 54.0 },
+    { c: 'Mexico · maize', volume: 18.5,  price: 35.8 },
+    { c: 'Ghana · rice',   volume: -29.4, price: -3.8 },
+  ];
+  function renderC() {
+    const svg = d3.select('#chart-c');
+    const box = document.querySelector('#chart-c').parentElement.getBoundingClientRect();
+    const W = Math.max(320, Math.min(700, box.width - 40)), H = 250;
+    const M = { top: 56, right: 56, bottom: 34, left: 112 };
+    svg.attr('viewBox', `0 0 ${W} ${H}`).selectAll('*').remove();
+    const iw = W - M.left - M.right, ih = H - M.top - M.bottom;
+    svg.append('text').attr('class', 'title').attr('id', 'chart-c-title').attr('x', 8).attr('y', 22).text('Three cases, three endings');
+    svg.append('text').attr('class', 'subtitle').attr('x', 8).attr('y', 40).text('Change after the shock vs the five years before');
+    const g = svg.append('g').attr('transform', `translate(${M.left},${M.top})`);
+    const x = d3.scaleLinear().domain([-35, 60]).range([0, iw]);
+    const y0 = d3.scaleBand().domain(C.map(d => d.c)).range([0, ih]).padding(0.28);
+    const y1 = d3.scaleBand().domain(['volume', 'price']).range([0, y0.bandwidth()]).padding(0.12);
+    g.append('g').attr('class', 'axis').attr('transform', `translate(0,${ih})`)
+      .call(d3.axisBottom(x).ticks(5).tickSize(-ih).tickFormat(v => (v > 0 ? '+' : '') + v + '%'));
+    g.append('line').attr('class', 'zero').attr('x1', x(0)).attr('x2', x(0)).attr('y1', 0).attr('y2', ih);
+    const row = g.selectAll('g.row').data(C).join('g').attr('transform', d => `translate(0,${y0(d.c)})`);
+    row.append('text').attr('class', 'label strong').attr('x', -10).attr('y', y0.bandwidth() / 2).attr('dy', '0.32em').attr('text-anchor', 'end').text(d => d.c);
+    ['volume', 'price'].forEach(k => {
+      row.append('rect').attr('rx', 3).attr('y', y1(k)).attr('height', y1.bandwidth())
+        .attr('x', d => Math.min(x(0), x(d[k]))).attr('width', d => Math.abs(x(d[k]) - x(0)))
+        .attr('fill', css(SERIES[k].tok))
+        .on('mousemove', (ev, d) => showTip(`<b>${d.c}</b><br>${SERIES[k].name}: ${(d[k] > 0 ? '+' : '')}${d[k].toFixed(1)}%`, ev)).on('mouseleave', hideTip);
+      row.append('text').attr('class', 'value').attr('y', y1(k) + y1.bandwidth() / 2).attr('dy', '0.32em')
+        .attr('x', d => d[k] >= 0 ? x(d[k]) + 5 : x(d[k]) - 5).attr('text-anchor', d => d[k] >= 0 ? 'start' : 'end')
+        .text(d => (d[k] > 0 ? '+' : '−') + Math.abs(d[k]).toFixed(0) + '%');
+    });
+    const lg = svg.append('g').attr('class', 'legend').attr('transform', `translate(${M.left},${H - 6})`);
+    let xo = 0;
+    ['volume', 'price'].forEach(k => {
+      const it = lg.append('g').attr('transform', `translate(${xo},0)`);
+      it.append('rect').attr('width', 12).attr('height', 12).attr('y', -10).attr('rx', 2).attr('fill', css(SERIES[k].tok));
+      it.append('text').attr('x', 16).text(SERIES[k].name);
+      xo += 16 + SERIES[k].name.length * 6.8 + 20;
+    });
+  }
+
+  // =============================== the tool ===============================
+  // Inputs per case, from the analysis (FAOSTAT-derived, 2019-23 means).
+  const TOOL = {
+    Egypt:  { imported: 526, total: 3107, top1: 0.554, pop: 111.0, mt: 8.50, usd: 3.09 },
+    Mexico: { imported: 391, total: 3270, top1: 0.937, pop: 127.7, mt: 17.01, usd: 4.48 },
+    Ghana:  { imported: 222, total: 3095, top1: 0.702, pop: 32.5,  mt: 0.86, usd: 0.37 },
+  };
+  const $ = id => document.getElementById(id);
+  const sel = $('tool-country'), rng = $('tool-shock'), out = $('tool-shock-out');
+  const presets = Array.from(document.querySelectorAll('.tool .presets button'));
+  function calc() {
+    const c = TOOL[sel.value], p = +rng.value / 100, share = 1 - 1 / (1 + p);
+    const kcal = c.imported * share, upper = c.imported * c.top1;
+    out.value = `+${rng.value}%`;
+    $('r-kcal').textContent = kcal.toFixed(0);
+    $('r-pct').textContent = `${(100 * kcal / c.total).toFixed(1)}% of the diet`;
+    $('r-slices').textContent = (kcal / 80).toFixed(1);
+    $('r-pop').textContent = `${c.pop.toFixed(0)}M`;
+    $('r-months').textContent = (12 * share).toFixed(1);
+    $('r-mt').textContent = `${(c.mt * share).toFixed(2)} Mt`;
+    $('r-usd').textContent = (c.usd * p).toFixed(c.usd * p < 1 ? 2 : 1);
+    // Carry cost of the reserve: storage + (capital + shrinkage) on grain valued at the 2019-23 import price. Assumed, not FAOSTAT.
+    const CARRY = { storage: 20, capital: 0.05, loss: 0.02 };
+    const pricePerT = c.usd / c.mt * 1000;
+    const carry = c.mt * share * 1e6 * (CARRY.storage + pricePerT * (CARRY.capital + CARRY.loss)) / 1e9;
+    $('r-carry').textContent = carry.toFixed(2);
+    $('r-even').textContent = carry > 0 && p > 0 ? Math.round(c.usd * p / carry) : '—';
+    $('r-bounds').textContent = `Bounded: 0 kcal if fully replaced at the same price · ${upper.toFixed(0)} kcal if nothing is replaced. Model C: imported calories × (1 − 1 ÷ (1 + shock)).`;
+    presets.forEach(b => b.setAttribute('aria-pressed', String(+b.dataset.shock === +rng.value)));
+  }
+  sel.addEventListener('change', calc);
+  rng.addEventListener('input', calc);
+  presets.forEach(b => b.addEventListener('click', () => { rng.value = b.dataset.shock; calc(); }));
+  calc();
+
+  // =============================== steppers ===============================
+  const scrollies = [
+    { el: document.querySelector('[data-scrolly="a"]'), render: renderA, size: sizeA, current: -1 },
+    { el: document.querySelector('[data-scrolly="b"]'), render: renderB, size: sizeB, current: -1 },
+  ];
+  scrollies.forEach(sc => {
+    const steps = Array.from(sc.el.querySelectorAll('.step'));
+    const activate = i => {
+      if (i === sc.current) return;
+      sc.current = i;
+      steps.forEach((el, j) => el.classList.toggle('is-active', j === i));
+      sc.render(i);
+    };
+    const io = new IntersectionObserver(entries => {
+      entries.forEach(e => { if (e.isIntersecting) activate(+e.target.dataset.step); });
+    }, { rootMargin: '-45% 0px -45% 0px', threshold: 0 });
+    steps.forEach(el => io.observe(el));
+    sc.size(); sc.render(0);
+  });
+  renderC();
+
+  const bar = document.getElementById('progress');
+  const progress = () => {
+    const d = document.documentElement;
+    bar.style.width = `${(100 * d.scrollTop / Math.max(1, d.scrollHeight - d.clientHeight)).toFixed(2)}%`;
+  };
+  window.addEventListener('scroll', progress, { passive: true });
+  window.addEventListener('resize', () => { scrollies.forEach(sc => { sc.size(); sc.render(Math.max(0, sc.current)); }); renderC(); });
+  progress();
+})();
+</script>
+
+</body>
+</html>
